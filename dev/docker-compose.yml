@@ -3,7 +3,7 @@ version: "3.7"
 services:
   model_scheduler:
     build:
-      context: ../../model_scheduler/model_scheduler_src
+      context: ../../model_scheduler/model_scheduler_src  # relative to the docker-compose.yml file
       dockerfile: dev_container/Dockerfile  # the Dockerfile path is relative to the build context
     volumes:
       # the from path is the path of the folder in the VM (so it has to be shared with windows first)
@@ -20,3 +20,17 @@ services:
 #      HUGGINGFACE_ACCESS_TOKEN: ${HUGGINGFACE_ACCESS_TOKEN}
 #      PYTORCH_CUDA_ALLOC_CONF: ${PYTORCH_CUDA_ALLOC_CONF}
 #      HUGGINGFACE_HUB_CACHE: ${HUGGINGFACE_HUB_CACHE}
+  auth:
+    build:
+      context: ../../auth/auth_src  # relative to the docker-compose.yml file
+      dockerfile: dev_container/Dockerfile  # the Dockerfile path is relative to the build context
+    volumes:
+      # the from path is the path of the folder in the VM (so it has to be shared with windows first)
+      # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
+      - /web_ai/auth/auth_src:/usr/src/auth_src
+    expose:
+      - 8000 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
+    ports:
+      - "8000:8000"  # host:container
+    env_file:
+      - ../../auth/auth_src/.env
