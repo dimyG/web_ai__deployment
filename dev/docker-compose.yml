@@ -1,0 +1,22 @@
+# run docker-compose build from inside the directory docker-compose.yml is. build context is defined relative to the docker-compose.yml file
+version: "3.7"
+services:
+  model_scheduler:
+    build:
+      context: ../../model_scheduler/model_scheduler_src
+      dockerfile: dev_container/Dockerfile  # the Dockerfile path is relative to the build context
+    volumes:
+      # the from path is the path of the folder in the VM (so it has to be shared with windows first)
+      # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
+      - /web_ai/model_scheduler/model_scheduler_src:/usr/src/model_scheduler_src
+    expose:
+      - 8001 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
+    ports:
+      - "8001:8001"  # host:container
+    env_file:
+      - ../../model_scheduler/model_scheduler_src/.env
+#    the values of the environment directive override the values of the env-file directive
+#    environment:
+#      HUGGINGFACE_ACCESS_TOKEN: ${HUGGINGFACE_ACCESS_TOKEN}
+#      PYTORCH_CUDA_ALLOC_CONF: ${PYTORCH_CUDA_ALLOC_CONF}
+#      HUGGINGFACE_HUB_CACHE: ${HUGGINGFACE_HUB_CACHE}
