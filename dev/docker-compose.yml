@@ -52,3 +52,6 @@ services:
     stdin_open: true  # allows to run the container in interactive mode. (it solves the exit with code 0 issue: https://github.com/facebook/create-react-app/issues/8688)
     env_file:
       - ../../web_client/web_client_src/.env
+    environment:
+      # CHOKIDAR_USEPOLLING=true is needed for hot reloading on container running in docker-machine on windows host
+      CHOKIDAR_USEPOLLING: 1  
