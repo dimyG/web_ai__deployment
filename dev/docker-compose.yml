@@ -21,8 +21,6 @@ services:
       - "8001:8001"  # host:container
     env_file:
       - ../../payments/payments_src/.env
-    environment:
-      WATCHFILES_FORCE_POLLING: 1
 
   pre_inference:
     build:
