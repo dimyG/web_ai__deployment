@@ -7,6 +7,12 @@ services:
     ports:
       - "6379:6379"
 
+  rabbitmq:
+    image: rabbitmq:3.11.9-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
   payments:
     build:
       context: ../../payments/payments_src  # relative to the docker-compose.yml file
@@ -19,6 +25,8 @@ services:
       - 8001 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
       - "8001:8001"  # host:container
+    depends_on:
+      - rabbitmq
     env_file:
       - ../../payments/payments_src/.env
 
@@ -54,6 +62,8 @@ services:
       - 8000 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
       - "8000:8000"  # host:container
+    depends_on:
+      - rabbitmq
     env_file:
       - ../../auth/auth_src/.env
 
