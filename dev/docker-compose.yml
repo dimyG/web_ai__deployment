@@ -21,9 +21,9 @@ services:
         POSTGRES_USER: ${POSTGRES_USER}
         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
         POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      # the volume contains only the .env file with the postgres host and password
-      - /web_ai/postgres:/etc/postgresql
+#    volumes:
+#      # the volume contains only the .env file with the postgres host and password
+#      - /web_ai/postgres:/etc/postgresql
     env_file:
       - .env
 
@@ -33,8 +33,9 @@ services:
       dockerfile: dev_container/Dockerfile  # the Dockerfile path is relative to the build context
     volumes:
       # the from path is the path of the folder in the VM (so it has to be shared with windows first)
+      # currently I use docker-desktop that doesn't explicitly use a VM, so we can use the windows path directly in the From path
       # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
-      - /web_ai/payments/payments_src/:/usr/src/payments_src
+      - D:/Projects_D/web_ai/payments/payments_src/:/usr/src/payments_src
     expose:
       - 8001 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
@@ -52,7 +53,7 @@ services:
     volumes:
       # the from path is the path of the folder in the VM (so it has to be shared with windows first)
       # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
-      - /web_ai/pre_inference/pre_inference_src:/usr/src/pre_inference_src
+      - D:/Projects_D/web_ai/pre_inference/pre_inference_src:/usr/src/pre_inference_src
     expose:
       - 8002 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
@@ -72,7 +73,7 @@ services:
     volumes:
       # the from path is the path of the folder in the VM (so it has to be shared with windows first)
       # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
-      - /web_ai/auth/auth_src:/usr/src/auth_src
+      - D:/Projects_D/web_ai/auth/auth_src:/usr/src/auth_src
     expose:
       - 8000 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
@@ -90,7 +91,7 @@ services:
     volumes:
       # the from path is the path of the folder in the VM (so it has to be shared with windows first)
       # the to path is the path of the folder in the container (the WORKDIR of the Dockerfile)
-      - /web_ai/web_client/web_client_src:/usr/src/web_client_src
+      - D:/Projects_D/web_ai/web_client/web_client_src:/usr/src/web_client_src
     expose:
       - 3000 # Exposes ports without publishing them to the host machine, they’ll only be accessible to linked services
     ports:
