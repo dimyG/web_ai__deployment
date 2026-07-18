@@ -1,0 +1,2 @@
+CREATE DATABASE auth_prj;
+CREATE DATABASE payments_prj;

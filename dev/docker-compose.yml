@@ -14,15 +14,24 @@ services:
 
   postgres:
     image: postgres:14.6-bullseye
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d postgres" ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     ports:
       - "5432:5432"
     environment:
         POSTGRES_USER: ${POSTGRES_USER}
         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-        POSTGRES_DB: ${POSTGRES_DB}
-#    volumes:
-#      # the volume contains only the .env file with the postgres host and password
-#      - /web_ai/postgres:/etc/postgresql
+        # POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # # the volume contains only the .env file with the postgres host and password
+      # - /web_ai/postgres:/etc/postgresql
+      # the init-databases.sql file is copied to the container and executed when the container is started for the first time.
+      # It only executes the SQL commands in the file if the data directory is empty (so the first time only)
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     env_file:
       - .env
 
@@ -41,8 +50,10 @@ services:
     ports:
       - "8001:8001"  # host:container
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     env_file:
       - ../../payments/payments_src/.env
 
@@ -79,8 +90,10 @@ services:
     ports:
       - "8000:8000"  # host:container
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     env_file:
       - ../../auth/auth_src/.env
 
