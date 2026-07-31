@@ -1,0 +1,9 @@
+# core.autocrlf=true on the dev workstation would otherwise rewrite these to CRLF on checkout.
+# For .sh that breaks both Git Bash (`$'\r': command not found` when sourcing) and Linux
+# containers ("bad interpreter"). Caddyfile and cloud-init are parsed on Linux too.
+* text=auto
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf

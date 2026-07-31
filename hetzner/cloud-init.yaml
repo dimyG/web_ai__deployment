@@ -1,0 +1,29 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - git
+
+write_files:
+  # The CRA production build is the only memory-hungry step on this 4GB box.
+  - path: /etc/sysctl.d/99-swappiness.conf
+    content: |
+      vm.swappiness=10
+
+runcmd:
+  - [ sh, -c, "install -m 0755 -d /etc/apt/keyrings" ]
+  - [ sh, -c, "curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && chmod a+r /etc/apt/keyrings/docker.asc" ]
+  - [ sh, -c, "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable\" > /etc/apt/sources.list.d/docker.list" ]
+  - [ sh, -c, "apt-get update -y" ]
+  - [ sh, -c, "apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" ]
+  - [ sh, -c, "systemctl enable --now docker" ]
+  - [ sh, -c, "fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile" ]
+  - [ sh, -c, "echo '/swapfile none swap sw 0 0' >> /etc/fstab" ]
+  - [ sh, -c, "sysctl -p /etc/sysctl.d/99-swappiness.conf" ]
+  - [ sh, -c, "mkdir -p /opt/web_ai" ]
+  - [ sh, -c, "sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config && systemctl restart ssh" ]
+  - [ sh, -c, "touch /var/lib/cloud-init-finished" ]

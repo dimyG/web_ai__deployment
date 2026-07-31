@@ -1,0 +1,49 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# Empty in production (Let's Encrypt); "tls internal" for local smoke tests.
+	{$CADDY_TLS}
+
+	encode zstd gzip
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	# Every backend path is /api/<service>/..., so one origin serves all three and the SPA.
+	# Single origin means no CORS preflights and one certificate.
+	handle /api/auth/* {
+		reverse_proxy auth:8000
+	}
+
+	handle /api/payments/* {
+		reverse_proxy payments:8001
+	}
+
+	handle /api/preinference/* {
+		reverse_proxy pre_inference:8002 {
+			# pre_inference's limiter_key() parses the RFC 7239 Forwarded header as
+			# split(';')[0].split('=')[1]. Without this header it logs an error and falls back
+			# to the Host header, which is identical for every visitor - collapsing all users
+			# into a single rate-limit bucket.
+			header_up Forwarded "for={http.request.remote.host};proto={http.request.scheme}"
+		}
+	}
+
+	# Django admin is deliberately NOT routed. Reach it with:
+	#   ./ssh.sh -L 8000:127.0.0.1:8000   then open http://localhost:8000/admin/
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+www.{$DOMAIN} {
+	{$CADDY_TLS}
+	redir https://{$DOMAIN}{uri} permanent
+}

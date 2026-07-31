@@ -1,0 +1,143 @@
+name: web-ai-demo
+
+services:
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+      CADDY_TLS: ${CADDY_TLS:-}
+    depends_on:
+      - web
+      - auth
+      - payments
+      - pre_inference
+
+  web:
+    build:
+      context: ../../web_client/web_client_src
+      dockerfile: hetzner_container/Dockerfile
+      args:
+        REACT_APP_AUTH_API_SERVICE: https://${DOMAIN}/
+        REACT_APP_PAYMENTS_API_SERVICE: https://${DOMAIN}/
+        REACT_APP_TEXT_TO_IMG_API_SERVICE: https://${DOMAIN}/api/preinference/
+        REACT_APP_RUNPOD_API_KEY: ${RUNPOD_API_KEY}
+        # Empty: the login form must render blank.
+        REACT_APP_DEMO_LOGIN: ""
+        REACT_APP_DEMO_PASSWORD: ""
+    restart: unless-stopped
+
+  auth:
+    build:
+      context: ../../auth/auth_src
+      dockerfile: hetzner_container/Dockerfile
+    restart: unless-stopped
+    # Loopback only: lets `ssh -L 8000:127.0.0.1:8000` reach /admin/ without exposing it.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      AUTH_PRJ_MODE: prod
+      DEBUG: "FALSE"
+      DJANGO_SECRET_KEY: ${JWT_SIGNING_KEY}
+      POSTGRES_HOST: postgres
+      POSTGRES_PSW: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      # RABBITMQ_BROKER_ID intentionally unset: setting it switches consumer.py to AmazonMQ TLS.
+      DJANGO_SUPERUSER_EMAIL: ${DJANGO_SUPERUSER_EMAIL}
+      DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  payments:
+    build:
+      context: ../../payments/payments_src
+      dockerfile: hetzner_container/Dockerfile
+    restart: unless-stopped
+    environment:
+      AUTH_PRJ_MODE: prod
+      DEBUG: "FALSE"
+      DJANGO_SECRET_KEY: ${PAYMENTS_DJANGO_SECRET_KEY}
+      JWT_SECRET: ${JWT_SIGNING_KEY}
+      POSTGRES_HOST: postgres
+      POSTGRES_PSW: ${POSTGRES_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  pre_inference:
+    build:
+      context: ../../pre_inference/pre_inference_src
+      dockerfile: hetzner_container/Dockerfile
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SIGNING_KEY}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+      RUNPOD_API_KEY: ${RUNPOD_API_KEY}
+      RUNPOD_RUN_URL: ${RUNPOD_RUN_URL}
+      RUNPOD_STATUS_URL: ${RUNPOD_STATUS_URL}
+    depends_on:
+      redis:
+        condition: service_started
+
+  postgres:
+    image: postgres:14.6-bullseye
+    restart: unless-stopped
+    # No ports: reachable only over the compose network.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:7.0-bullseye
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.11.9-management
+    restart: unless-stopped
+    # Management UI on 15672 is deliberately not published.
+    healthcheck:
+      # Measured: rabbitmq 3.11.9 needs ~90s to answer a ping on a cold volume, and
+      # rabbitmq-diagnostics itself blocks for 60s before reporting failure - so the docker
+      # timeout must be generous and start_period must cover the whole boot, otherwise
+      # compose declares the container unhealthy and dependents never start.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
